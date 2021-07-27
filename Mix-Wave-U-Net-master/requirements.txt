@@ -1,0 +1,10 @@
+numpy==1.18.3
+sacred==0.8.1
+tensorflow-cpu==1.15
+librosa==0.7.2
+
+lxml==4.5.0
+google
+protobuf
+soundfile
+tqdm
