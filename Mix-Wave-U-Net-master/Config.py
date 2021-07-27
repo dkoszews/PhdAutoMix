@@ -10,7 +10,7 @@ def cfg():
     model_config = {"enst_path": "/mnt/windaten/Datasets/ENST_Drums",  # SET ENST PATH HERE
                     "estimates_path": "/mnt/windaten/Source_Estimates",
                     # SET THIS PATH TO WHERE YOU WANT OUTPUTS PRODUCED BY THE TRAINED MODEL TO BE SAVED. Folder itself must exist!
-                    "data_path": "/mnt/windaten/Mix-U-Net Data",
+                    "output_folder": "E:\\phd\\Experiments",
                     # Set this to where the preprocessed dataset should be saved
 
                     "model_base_dir": "checkpoints",  # Base folder for model checkpoints

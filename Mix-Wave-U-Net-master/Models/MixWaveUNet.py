@@ -6,6 +6,10 @@ from Utils import LeakyReLU
 import numpy as np
 import Models.OutputLayer
 
+from tensorflow.python.layers import base
+import tensorflow as tf
+import tensorflow_core.contrib.slim as slim
+
 
 class MixWaveUNet:
     '''
@@ -65,11 +69,11 @@ class MixWaveUNet:
             # Go from centre feature map through up- and downsampling blocks
             for i in range(self.num_layers):
                 output_shape = 2*output_shape - 1 #Upsampling
-                output_shape = output_shape - self.merge_filter_size + 1 # Conv
+                output_shape = output_shape - self.merge_filter_size + 1  # Conv
 
                 input_shape = 2*input_shape - 1 # Decimation
                 if i < self.num_layers - 1:
-                    input_shape = input_shape + self.filter_size - 1 # Conv
+                    input_shape = input_shape + self.filter_size - 1  # Conv
                 else:
                     input_shape = input_shape + self.input_filter_size - 1
 
@@ -81,7 +85,8 @@ class MixWaveUNet:
             print('input shape: %s - output shape: %s' % (str(input_shape), str(output_shape)))
             return input_shape, output_shape
         else:
-            assert(shape[1]%np.power(2,self.num_layers)==0) #input should be divisible by downsapmling factor of the model
+            assert(shape[1] % np.power(2, self.num_layers) == 0) # input should be divisible by downsapmling factor of
+            # the model
             return [shape[0], shape[1], self.num_inputs], [shape[0], shape[1], self.num_outputs]
 
     def get_output(self, input, training, reuse=True):
@@ -95,7 +100,7 @@ class MixWaveUNet:
         with tf.compat.v1.variable_scope("separator", reuse=reuse):
             enc_outputs = list()
             
-            current_layer = input  # tf.concat([input[key] for key in input.keys() if key != 'mix'], 2)
+            current_layer = input
 
             # Down-convolution: Repeat strided conv
             for i in range(self.num_layers):
@@ -149,7 +154,14 @@ class MixWaveUNet:
             else:
                 raise NotImplementedError
 
+            # def model_summary():
+            #     model_vars = tf.trainable_variables()
+            #     slim.model_analyzer.analyze_vars(model_vars, print_info=True)
+            #
+            # model_summary()
+
             if self.output_type == "direct":
                 return Models.OutputLayer.independent_outputs(current_layer, ['mix'], self.num_outputs, self.output_filter_size, self.padding, out_activation)
             else:
                 raise NotImplementedError
+

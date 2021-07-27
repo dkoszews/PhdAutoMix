@@ -36,7 +36,7 @@ def predict(audio, model_config, load_model):
 
     # Load model
     # Load pretrained model to continue training, if we are supposed to
-    restorer = tf.compat.v1.train.Saver(None, write_version=tf.compat.v1.train.SaverDef.V2)
+    restorer = tf.compat.v1.run_single_epoch.Saver(None, write_version=tf.compat.v1.run_single_epoch.SaverDef.V2)
     print("Num of variables" + str(len(tf.compat.v1.global_variables())))
     restorer.restore(sess, load_model)
     print('Pre-trained model restored for song prediction')

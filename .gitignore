@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+Mix-Wave-U-Net-master/.idea/workspace.xml
+Mix-Wave-U-Net-master/.idea/vcs.xml
+

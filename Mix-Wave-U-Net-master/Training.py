@@ -11,17 +11,15 @@ import Utils
 import Models.MixWaveUNet
 import Test
 
-import functools
 
 ex = Experiment('Waveunet Training', ingredients=[config_ingredient])
 
-@ex.config
-# Executed for training, sets the seed value to the Sacred config so that Sacred fixes the Python and Numpy RNG to the same state everytime.
-def set_seed():
-    seed = 1337
 
-@config_ingredient.capture
-def train(model_config, experiment_id, load_model=None):
+# Executed for training, sets the seed value to the Sacred config so that Sacred fixes the Python and Numpy RNG to
+# the same state everytime
+
+
+def run_single_epoch(model_config, experiment_id, load_model=None):
     # Determine input and output shapes
     disc_input_shape = [model_config["batch_size"], model_config["num_frames"], 0]  # Shape of input
     if model_config["network"] == "unet":
@@ -30,21 +28,19 @@ def train(model_config, experiment_id, load_model=None):
         raise NotImplementedError
 
     input_shape, output_shape = model_class.get_padding(np.array(disc_input_shape))
-    model_func = model_class.get_output
-
     # Placeholders and input normalisation
 
     dataset = Datasets.get_dataset(model_config, input_shape, output_shape, partition="train")
     iterator = dataset.make_one_shot_iterator()
     batch = iterator.get_next()
-    
+
     batch_input = tf.concat([batch[key] for key in sorted(batch.keys()) if key != 'mix'], 2)
 
     print("Training...")
 
     # BUILD MODELS
     # Separator
-    pred_outputs = model_func(batch_input, training=True, reuse=False)
+    pred_outputs = model_class.get_output(batch_input, training=True, reuse=False)
 
     # Supervised objective: MSE for raw audio, MAE for magnitude space (Jansson U-Net)
     loss = 0
@@ -54,7 +50,8 @@ def train(model_config, experiment_id, load_model=None):
     loss += tf.reduce_mean(tf.abs(target_output - pred_output))
 
     # TRAINING CONTROL VARIABLES
-    global_step = tf.compat.v1.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False, dtype=tf.int64)
+    global_step = tf.compat.v1.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False,
+                                            dtype=tf.int64)
     increment_global_step = tf.compat.v1.assign(global_step, global_step + 1)
 
     # Set up optimizers
@@ -65,7 +62,8 @@ def train(model_config, experiment_id, load_model=None):
     update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         with tf.compat.v1.variable_scope("separator_solver"):
-            separator_solver = tf.compat.v1.train.AdamOptimizer(learning_rate=model_config["lr"]).minimize(loss, var_list=vars)
+            separator_solver = tf.compat.v1.run_single_epoch.AdamOptimizer(learning_rate=model_config["lr"]).minimize(loss,
+                                                                                                                      var_list=vars)
 
     # SUMMARIES
     tf.compat.v1.summary.scalar("sep_loss", loss, collections=["sup"])
@@ -73,29 +71,30 @@ def train(model_config, experiment_id, load_model=None):
 
     # Start session and queue input threads
     config = tf.compat.v1.ConfigProto()
-    config.gpu_options.allow_growth=True
+    config.gpu_options.allow_growth = True
     sess = tf.compat.v1.Session(config=config)
     sess.run(tf.compat.v1.global_variables_initializer())
-    writer = tf.compat.v1.summary.FileWriter(model_config["log_dir"] + os.path.sep + str(experiment_id),graph=sess.graph)
+    writer = tf.compat.v1.summary.FileWriter(model_config["log_dir"] + os.path.sep + str(experiment_id),
+                                             graph=sess.graph)
 
     # CHECKPOINTING
     # Load pretrained model to continue training, if we are supposed to
     if load_model != None:
-        restorer = tf.train.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.train.SaverDef.V2)
+        restorer = tf.train.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.run_single_epoch.SaverDef.V2)
         print("Num of variables" + str(len(tf.compat.v1.global_variables())))
         restorer.restore(sess, load_model)
         print('Pre-trained model restored from file ' + load_model)
 
-    saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.train.SaverDef.V2)
+    saver = tf.compat.v1.run_single_epoch.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.run_single_epoch.SaverDef.V2)
 
     # Start training loop
     _global_step = sess.run(global_step)
     _init_step = _global_step
     for _ in tqdm(range(model_config["epoch_it"])):
         # TRAIN SEPARATOR
-        #try:
+        # try:
         _, _sup_summaries = sess.run([separator_solver, sup_summaries])
-        #except tf.errors.OutOfRangeError as e: # Ignore end of dataset and start over again
+        # except tf.errors.OutOfRangeError as e: # Ignore end of dataset and start over again
         #    continue
         writer.add_summary(_sup_summaries, global_step=_global_step)
 
@@ -104,7 +103,8 @@ def train(model_config, experiment_id, load_model=None):
 
     # Epoch finished - Save model
     print("Finished epoch!")
-    save_path = saver.save(sess, model_config["model_base_dir"] + os.path.sep + str(experiment_id) + os.path.sep + str(experiment_id), global_step=int(_global_step))
+    save_path = saver.save(sess, model_config["model_base_dir"] + os.path.sep + str(experiment_id) + os.path.sep + str(
+        experiment_id), global_step=int(_global_step))
 
     # Close session, clear computational graph
     writer.flush()
@@ -114,21 +114,21 @@ def train(model_config, experiment_id, load_model=None):
 
     return save_path
 
-@config_ingredient.capture
-def optimise(model_config, experiment_id):
+
+def run_training(model_config, experiment_id):
     epoch = 0
     best_loss = 10000
     model_path = None
     best_model_path = None
     for i in range(2):
         worse_epochs = 0
-        if i==1:
+        if i == 1:
             print("Finished first round of training, now entering fine-tuning stage")
-#             model_config["batch_size"] *= 2
+            #             model_config["batch_size"] *= 2
             model_config["lr"] = 1e-5
-        while worse_epochs < model_config["worse_epochs"]: # Early stopping on validation set after a few epochs
+        while worse_epochs < model_config["worse_epochs"]:  # Early stopping on validation set after a few epochs
             print("EPOCH: " + str(epoch))
-            model_path = train(load_model=model_path)
+            model_path = run_single_epoch(model_config, experiment_id, load_model=model_path)
             curr_loss = Test.test(model_config, model_folder=str(experiment_id), partition="val", load_model=model_path)
             epoch += 1
             if curr_loss < best_loss:
@@ -143,9 +143,9 @@ def optimise(model_config, experiment_id):
     test_loss = Test.test(model_config, model_folder=str(experiment_id), partition="test", load_model=best_model_path)
     return best_model_path, test_loss
 
-#@ex.automain
-def run(cfg):
-    model_config = cfg["model_config"]
+
+def run(model_config):
+
     print("SCRIPT START")
     # Create subfolders if they do not exist to save results
     for dir in [model_config["model_base_dir"], model_config["log_dir"]]:
@@ -153,10 +153,14 @@ def run(cfg):
             os.makedirs(dir)
 
     # Optimize in a supervised fashion until validation loss worsens
-    sup_model_path, sup_loss = optimise()
+    sup_model_path, sup_loss = run_training(model_config, "test_1")
     print("Supervised training finished! Saved model at " + sup_model_path + ". Performance: " + str(sup_loss))
 
+
 if __name__ == "__main__":
+    # TODO:
+    #   1) Generate experiment id.
+
     training_config = cfg()
     run(training_config)
     print()
