@@ -182,8 +182,7 @@ def get_dataset(model_config, input_shape, output_shape, partition):
 
         num_cores = 1
 
-        # for curr_partition in ["train", "val", "test"]:
-        for curr_partition in ["train"]:
+        for curr_partition in ["train", "val", "test"]:
             print("Writing " + curr_partition + " partition...")
 
             # Shuffle sample order
@@ -274,26 +273,61 @@ def get_dataset_pickle(model_config):
 
     dataset_1 = {"train": [
                          {
-                         "mix": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\mixture.wav",
-                         "bass": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\bass.wav",
-                         "drums": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\drums.wav",
-                         "other": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\other.wav",
-                         "vocals": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\vocals.wav"
+                         "mix": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\mixture.wav",
+                         "bass": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\bass.wav",
+                         "drums": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\drums.wav",
+                         "other": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\other.wav",
+                         "vocals": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\vocals.wav"
                      },
 
                              {
-                                 "mix": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\mixture.wav",
-                                 "bass": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\bass.wav",
-                                 "drums": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\drums.wav",
-                                 "other": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\other.wav",
-                                 "vocals": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\vocals.wav"
+                                 "mix": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\mixture.wav",
+                                 "bass": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\bass.wav",
+                                 "drums": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\drums.wav",
+                                 "other": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\other.wav",
+                                 "vocals": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\vocals.wav"
                              }
 
 
-                     ]
+                     ],
+        "test": [
+            {
+                "mix": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\mixture.wav",
+                "bass": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\bass.wav",
+                "drums": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\drums.wav",
+                "other": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\other.wav",
+                "vocals": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\vocals.wav"
+            },
+
+            {
+                "mix": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\mixture.wav",
+                "bass": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\bass.wav",
+                "drums": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\drums.wav",
+                "other": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\other.wav",
+                "vocals": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\vocals.wav"
+            }
+
+        ],
+        "val": [
+            {
+                "mix": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\mixture.wav",
+                "bass": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\bass.wav",
+                "drums": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\drums.wav",
+                "other": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\other.wav",
+                "vocals": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\vocals.wav"
+            },
+
+            {
+                "mix": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\mixture.wav",
+                "bass": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\bass.wav",
+                "drums": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\drums.wav",
+                "other": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\other.wav",
+                "vocals": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\vocals.wav"
+            }
+
+        ]
 
                  }
-
 
     return dataset_1
 

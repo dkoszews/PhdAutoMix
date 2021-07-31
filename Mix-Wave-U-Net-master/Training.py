@@ -19,7 +19,7 @@ ex = Experiment('Waveunet Training', ingredients=[config_ingredient])
 # the same state everytime
 
 
-def run_single_epoch(model_config, experiment_id, load_model=None):
+def run_single_epoch(model_config, experiment_id, load_model=None, print_initial_summary=False):
     # Determine input and output shapes
     disc_input_shape = [model_config["batch_size"], model_config["num_frames"], 0]  # Shape of input
     if model_config["network"] == "unet":
@@ -40,7 +40,7 @@ def run_single_epoch(model_config, experiment_id, load_model=None):
 
     # BUILD MODELS
     # Separator
-    pred_outputs = model_class.get_output(batch_input, training=True, reuse=False)
+    pred_outputs = model_class.get_output(batch_input, training=True, reuse=False, print_initial_summary=print_initial_summary)
 
     # Supervised objective: MSE for raw audio, MAE for magnitude space (Jansson U-Net)
     loss = 0
@@ -83,7 +83,7 @@ def run_single_epoch(model_config, experiment_id, load_model=None):
     # Load pretrained model to continue training, if we are supposed to
     if load_model != None:
         restorer = tf.train.Saver(tf.compat.v1.global_variables(),
-                                  write_version=tf.compat.v1.run_single_epoch.SaverDef.V2)
+                                  write_version=tf.compat.v1.train.SaverDef.V2)
         print("Num of variables" + str(len(tf.compat.v1.global_variables())))
         restorer.restore(sess, load_model)
         print('Pre-trained model restored from file ' + load_model)
@@ -116,7 +116,7 @@ def run_single_epoch(model_config, experiment_id, load_model=None):
     writer.flush()
     writer.close()
     sess.close()
-    tf.reset_default_graph()
+    tf.compat.v1.reset_default_graph()
 
     return save_path
 
@@ -126,6 +126,7 @@ def run_training(model_config, experiment_id):
     best_loss = 10000
     model_path = None
     best_model_path = None
+    print_initial_summary = True
     for i in range(2):
         worse_epochs = 0
         if i == 1:
@@ -134,7 +135,10 @@ def run_training(model_config, experiment_id):
             model_config["lr"] = 1e-5
         while worse_epochs < model_config["worse_epochs"]:  # Early stopping on validation set after a few epochs
             print("EPOCH: " + str(epoch))
-            model_path = run_single_epoch(model_config, experiment_id, load_model=model_path)
+            model_path = run_single_epoch(model_config,
+                                          experiment_id,
+                                          load_model=model_path,
+                                          print_initial_summary=print_initial_summary)
             curr_loss = Test.test(model_config, model_folder=str(experiment_id), partition="val", load_model=model_path)
             epoch += 1
             if curr_loss < best_loss:
@@ -145,6 +149,8 @@ def run_training(model_config, experiment_id):
             else:
                 worse_epochs += 1
                 print(f"Performance on validation set worsened to {curr_loss}")
+            if print_initial_summary:
+                print_initial_summary = False
     print(f"TRAINING FINISHED - TESTING WITH BEST MODEL {best_model_path}")
     test_loss = Test.test(model_config, model_folder=str(experiment_id), partition="test", load_model=best_model_path)
     return best_model_path, test_loss

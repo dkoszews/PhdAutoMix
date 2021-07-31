@@ -88,7 +88,7 @@ class MixWaveUNet:
             # the model
             return [shape[0], shape[1], self.num_inputs], [shape[0], shape[1], self.num_outputs]
 
-    def get_output(self, input_data, training, reuse=True):
+    def get_output(self, input_data, training, reuse=True, print_initial_summary=False):
         """
         Creates symbolic computation graph of the U-Net for a given input batch
         :param input_data: Input batch of mixtures, 3D tensor [batch_size, num_samples, num_channels]
@@ -159,8 +159,9 @@ class MixWaveUNet:
                 raise NotImplementedError
 
             # Print summary
-            model_vars = tf.trainable_variables()
-            slim.model_analyzer.analyze_vars(model_vars, print_info=True)
+            if print_initial_summary:
+                model_vars = tf.trainable_variables()
+                slim.model_analyzer.analyze_vars(model_vars, print_info=True)
 
             if self.output_type == "direct":
                 return Models.OutputLayer.independent_outputs(current_layer,

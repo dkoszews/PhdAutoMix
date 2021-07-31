@@ -44,8 +44,8 @@ def test(model_config, partition, model_folder, load_model):
 
     # CHECKPOINTING
     # Load pretrained model to test
-    restorer = tf.train.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.train.SaverDef.V2)
-    print("Num of variables" + str(len(tf.compat.v1.global_variables())))
+    restorer = tf.compat.v1.train.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.train.SaverDef.V2)
+    print("Num of variables: " + str(len(tf.compat.v1.global_variables())))
     restorer.restore(sess, load_model)
     print('Pre-trained model restored for testing')
 
@@ -71,8 +71,9 @@ def test(model_config, partition, model_folder, load_model):
         except tf.errors.OutOfRangeError as e:
             break
 
-    summary = tf.compat.v1.summary(value=[tf.compat.v1.summary.Value(tag="test_loss", simple_value=total_loss)])
-    writer.add_summary(summary, global_step=_global_step)
+
+    summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="test_loss", simple_value=total_loss)])
+    writer.add_summary(summary=summary, global_step=_global_step)
 
     writer.flush()
     writer.close()
@@ -81,6 +82,6 @@ def test(model_config, partition, model_folder, load_model):
 
     # Close session, clear computational graph
     sess.close()
-    tf.reset_default_graph()
+    tf.compat.v1.reset_default_graph()
 
     return total_loss
