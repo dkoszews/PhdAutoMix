@@ -32,7 +32,6 @@ def take_snippets_at_pos(sample, keys, start_pos, length, output_channels, num_s
     for key in keys:
 
         if key is 'mix':
-
             batch[key] = tf.map_fn(lambda pos: sample[key][pos:pos + length, :], start_pos, dtype=tf.float32)
             batch[key].set_shape([num_samples, length, output_channels])
         else:
@@ -152,7 +151,7 @@ def parse_record(example_proto, input_names, output_channels):
 
 
 def get_dataset(model_config, input_shape, output_shape, partition):
-    '''
+    """
     For a model configuration and input/output shapes of the network, get the corresponding dataset for a given
     partition
     :param model_config: Model config
@@ -160,7 +159,7 @@ def get_dataset(model_config, input_shape, output_shape, partition):
     :param output_shape: Output shape of network
     :param partition: "train", "valid", or "test" partition
     :return: Tensorflow dataset object
-    '''
+    """
 
     # Check if pre-processed dataset is already available for this model config and partition
     dataset_name = "task_" + model_config["task"] + "_" + \
@@ -181,9 +180,10 @@ def get_dataset(model_config, input_shape, output_shape, partition):
         # Each song is represented as a dictionary containing elements mix, acc, vocal or mix, bass, drums, other,
         # vocal depending on the task.
 
-        num_cores = 8
+        num_cores = 1
 
-        for curr_partition in ["train", "val", "test"]:
+        # for curr_partition in ["train", "val", "test"]:
+        for curr_partition in ["train"]:
             print("Writing " + curr_partition + " partition...")
 
             # Shuffle sample order
@@ -246,9 +246,19 @@ def get_dataset(model_config, input_shape, output_shape, partition):
 
 def get_dataset_pickle(model_config):
     if model_config["task"] == "dry":
-
-        with open('data/dataDryDict.pkl', "rb") as fp:
-            dataset = pickle.load(fp)
+        try:
+            with open('data/dataDryDict.pkl', "rb") as fp:
+                dataset = pickle.load(fp)
+        except Exception as e:
+            outsize = 0
+            with open('data/dataDryDict.pkl', 'rb') as infile:
+                content = infile.read()
+            with open('data/dataDryDict_new.pkl', 'wb') as output:
+                for line in content.splitlines():
+                    outsize += len(line) + 1
+                    output.write(line + str.encode('\n'))
+            with open('data/dataDryDict_new.pkl', "rb") as fp:
+                dataset = pickle.load(fp)
 
     elif model_config["task"] == "wet":
 
@@ -256,16 +266,36 @@ def get_dataset_pickle(model_config):
             dataset = pickle.load(fp)
 
     for partition in ["train", "val", "test"]:
-
         for idx in range(len(dataset[partition])):
-
             for key in dataset[partition][idx].keys():
-
                 if dataset[partition][idx][key] is not None:
                     dataset[partition][idx][key] = os.path.join(model_config['enst_path'],
                                                                 dataset[partition][idx][key][1:])
 
-    return dataset
+    dataset_1 = {"train": [
+                         {
+                         "mix": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\mixture.wav",
+                         "bass": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\bass.wav",
+                         "drums": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\drums.wav",
+                         "other": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\other.wav",
+                         "vocals": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock\\vocals.wav"
+                     },
+
+                             {
+                                 "mix": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\mixture.wav",
+                                 "bass": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\bass.wav",
+                                 "drums": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\drums.wav",
+                                 "other": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\other.wav",
+                                 "vocals": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Rock_1\\vocals.wav"
+                             }
+
+
+                     ]
+
+                 }
+
+
+    return dataset_1
 
 
 def get_path(db_path, instrument_node):

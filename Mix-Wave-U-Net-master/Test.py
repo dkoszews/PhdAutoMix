@@ -5,6 +5,7 @@ import os
 import Datasets
 import Models.MixWaveUNet
 
+
 def test(model_config, partition, model_folder, load_model):
     # Determine input and output shapes
     disc_input_shape = [model_config["batch_size"], model_config["num_frames"], 0]
@@ -30,16 +31,20 @@ def test(model_config, partition, model_folder, load_model):
     # Separator
     pred_outputs = model_func(batch_input, training=False, reuse=False)
 
-    global_step = tf.compat.v1.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False, dtype=tf.int64)
+    global_step = tf.compat.v1.get_variable('global_step',
+                                            [],
+                                            initializer=tf.constant_initializer(0),
+                                            trainable=False,
+                                            dtype=tf.int64)
 
     # Start session and queue input threads
     sess = tf.compat.v1.Session()
     sess.run(tf.compat.v1.global_variables_initializer())
-    writer = tf.compat.v1.summary.FileWriter(model_config["log_dir"] + os.path.sep +  model_folder, graph=sess.graph)
+    writer = tf.compat.v1.summary.FileWriter(model_config["log_dir"] + os.path.sep + model_folder, graph=sess.graph)
 
     # CHECKPOINTING
     # Load pretrained model to test
-    restorer = tf.train.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.run_single_epoch.SaverDef.V2)
+    restorer = tf.train.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.train.SaverDef.V2)
     print("Num of variables" + str(len(tf.compat.v1.global_variables())))
     restorer.restore(sess, load_model)
     print('Pre-trained model restored for testing')

@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+
 def independent_outputs(featuremap, output_names, num_channels, filter_width, padding, activation):
     outputs = dict()
     for name in output_names:

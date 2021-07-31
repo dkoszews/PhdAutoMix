@@ -50,7 +50,9 @@ def run_single_epoch(model_config, experiment_id, load_model=None):
     loss += tf.reduce_mean(tf.abs(target_output - pred_output))
 
     # TRAINING CONTROL VARIABLES
-    global_step = tf.compat.v1.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False,
+    global_step = tf.compat.v1.get_variable('global_step', [],
+                                            initializer=tf.constant_initializer(0),
+                                            trainable=False,
                                             dtype=tf.int64)
     increment_global_step = tf.compat.v1.assign(global_step, global_step + 1)
 
@@ -62,8 +64,8 @@ def run_single_epoch(model_config, experiment_id, load_model=None):
     update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         with tf.compat.v1.variable_scope("separator_solver"):
-            separator_solver = tf.compat.v1.run_single_epoch.AdamOptimizer(learning_rate=model_config["lr"]).minimize(loss,
-                                                                                                                      var_list=vars)
+            separator_solver = tf.compat.v1.train.AdamOptimizer(
+                learning_rate=model_config["lr"]).minimize(loss, var_list=vars)
 
     # SUMMARIES
     tf.compat.v1.summary.scalar("sep_loss", loss, collections=["sup"])
@@ -80,12 +82,14 @@ def run_single_epoch(model_config, experiment_id, load_model=None):
     # CHECKPOINTING
     # Load pretrained model to continue training, if we are supposed to
     if load_model != None:
-        restorer = tf.train.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.run_single_epoch.SaverDef.V2)
+        restorer = tf.train.Saver(tf.compat.v1.global_variables(),
+                                  write_version=tf.compat.v1.run_single_epoch.SaverDef.V2)
         print("Num of variables" + str(len(tf.compat.v1.global_variables())))
         restorer.restore(sess, load_model)
         print('Pre-trained model restored from file ' + load_model)
 
-    saver = tf.compat.v1.run_single_epoch.Saver(tf.compat.v1.global_variables(), write_version=tf.compat.v1.run_single_epoch.SaverDef.V2)
+    saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables(),
+                                     write_version=tf.compat.v1.train.SaverDef.V2)
 
     # Start training loop
     _global_step = sess.run(global_step)
@@ -94,8 +98,8 @@ def run_single_epoch(model_config, experiment_id, load_model=None):
         # TRAIN SEPARATOR
         # try:
         _, _sup_summaries = sess.run([separator_solver, sup_summaries])
-        # except tf.errors.OutOfRangeError as e: # Ignore end of dataset and start over again
-        #    continue
+        # except tf.errors.OutOfRangeError as e:  # Ignore end of dataset and start over again
+           # continue
         writer.add_summary(_sup_summaries, global_step=_global_step)
 
         # Increment step counter, check if maximum iterations per epoch is achieved and stop in that case
@@ -103,8 +107,10 @@ def run_single_epoch(model_config, experiment_id, load_model=None):
 
     # Epoch finished - Save model
     print("Finished epoch!")
-    save_path = saver.save(sess, model_config["model_base_dir"] + os.path.sep + str(experiment_id) + os.path.sep + str(
-        experiment_id), global_step=int(_global_step))
+    save_path = saver.save(sess,
+                           model_config["model_base_dir"] + os.path.sep + str(experiment_id) + os.path.sep +
+                           str(experiment_id),
+                           global_step=int(_global_step))
 
     # Close session, clear computational graph
     writer.flush()
@@ -133,13 +139,13 @@ def run_training(model_config, experiment_id):
             epoch += 1
             if curr_loss < best_loss:
                 worse_epochs = 0
-                print("Performance on validation set improved from " + str(best_loss) + " to " + str(curr_loss))
+                print(f"Performance on validation set improved from {best_loss} to {curr_loss}")
                 best_model_path = model_path
                 best_loss = curr_loss
             else:
                 worse_epochs += 1
-                print("Performance on validation set worsened to " + str(curr_loss))
-    print("TRAINING FINISHED - TESTING WITH BEST MODEL " + best_model_path)
+                print(f"Performance on validation set worsened to {curr_loss}")
+    print(f"TRAINING FINISHED - TESTING WITH BEST MODEL {best_model_path}")
     test_loss = Test.test(model_config, model_folder=str(experiment_id), partition="test", load_model=best_model_path)
     return best_model_path, test_loss
 
