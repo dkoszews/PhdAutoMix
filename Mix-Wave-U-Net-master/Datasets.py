@@ -1,5 +1,6 @@
 import glob
 import os.path
+import json
 import random
 from multiprocessing import Process
 
@@ -8,7 +9,6 @@ import Utils
 import numpy as np
 import os
 import tensorflow as tf
-import pickle
 
 
 def take_random_snippets(sample, keys, input_shape, output_shape, num_samples):
@@ -69,20 +69,19 @@ def write_records(sample_list, model_config, input_shape, output_shape, records_
         print("Reading song")
         try:
             audio_tracks = dict()
-
             for key in all_keys:
-
                 try:
-                    audio, _ = Utils.load(sample[key], sr=model_config["expected_sr"],
+                    audio, _ = Utils.load(sample[key],
+                                          sr=model_config["expected_sr"],
                                           mono=model_config["mono_downmix"])
-                    if key is 'mix':
+                    if key == "mix":
                         lengthMix = audio.shape[0]
 
                 except:
                     audio = np.zeros((lengthMix, 1), dtype=np.float32)
 
-                if key is not 'mix':
-                    assert (audio.shape[1] == 1)
+                if key != "mix":
+                    assert (audio.shape[1] <= 2)
                 else:
                     if not model_config["mono_downmix"]:
                         assert (audio.shape[1] == 2)
@@ -94,17 +93,24 @@ def write_records(sample_list, model_config, input_shape, output_shape, records_
                 #                 if not model_config["mono_downmix"] and audio.shape[1] == 1:
                 #                     print("WARNING: Had to duplicate mono track to generate stereo")
                 #                     audio = np.tile(audio, [1, 2])
+                if audio.shape[1] == 1 or key == "mix":
+                    audio_tracks[key] = audio
+                elif audio.shape[1] == 2:
+                    audio_tracks[key] = audio[:, 0]
+                    audio_tracks[f"{key}_1"] = audio[:, 1]
+                else:
+                    raise NotImplemented(f"[ERROR] Unsupported number of channels {audio.shape[1]}")
 
-                audio_tracks[key] = audio
         except Exception as e:
             print(e)
             print("ERROR occurred during loading file " + str(sample) + ". Skipping")
             continue
 
         # Pad at beginning and end with zeros
-        audio_tracks = {
-            key: np.pad(audio_tracks[key], [(pad_frames, pad_frames), (0, 0)], mode="constant", constant_values=0.0) for
-            key in audio_tracks.keys()}
+        for key in audio_tracks.keys():
+            if key != "mix":
+                audio_tracks[key] = audio_tracks[key].reshape(audio_tracks[key].shape[0], 1)
+            audio_tracks[key] = np.pad(audio_tracks[key], [(pad_frames, pad_frames), (0, 0)], mode="constant", constant_values=0.0)
 
         # All audio tracks must be exactly same length and channels
         length = audio_tracks["mix"].shape[0]
@@ -143,6 +149,7 @@ def parse_record(example_proto, input_names, output_channels):
             sample[key] = tf.reshape(parsed_features[key], tf.stack([length, channels]))
         else:
             sample[key] = tf.reshape(parsed_features[key], tf.stack([length, 1]))
+            sample[f"{key}_1"] = tf.reshape(parsed_features[key], tf.stack([length, 1]))
 
     sample["length"] = length
     sample["channels"] = channels
@@ -171,10 +178,9 @@ def get_dataset(model_config, input_shape, output_shape, partition):
         # We have to prepare the dataset
         print("Preparing dataset! This could take a while...")
 
-        dataset = get_dataset_pickle(model_config)
+        dataset = get_dataset_pickle()
 
         # Convert audio files into TFRecords now
-
         # The dataset structure is a dictionary with "train", "valid", "test" keys, whose entries are lists, where each
         # element represents a song.
         # Each song is represented as a dictionary containing elements mix, acc, vocal or mix, bass, drums, other,
@@ -216,19 +222,23 @@ def get_dataset(model_config, input_shape, output_shape, partition):
     dataset = dataset.prefetch(10)
 
     # Take random samples from each song
+    # test = take_random_snippets(dataset.element_spec, model_config["input_names"] + ["mix"], input_shape[1:],
+    #                             output_shape[1:],
+    #                             model_config["num_snippets_per_track"])
     if partition == "train":
+
         dataset = dataset.flat_map(
-            lambda x: take_random_snippets(x, model_config["input_names"] + ["mix"], input_shape[1:], output_shape[1:],
+            lambda x: take_random_snippets(x, model_config["input_names_2"] + ["mix"], input_shape[1:], output_shape[1:],
                                            model_config["num_snippets_per_track"]))
     else:
         dataset = dataset.flat_map(
-            lambda x: take_all_snippets(x, model_config["input_names"] + ["mix"], input_shape[1:], output_shape[1:]))
+            lambda x: take_all_snippets(x, model_config["input_names_2"] + ["mix"], input_shape[1:], output_shape[1:]))
     dataset = dataset.prefetch(100)
 
     #     if partition == "train" and model_config["augmentation"]: # If its the train partition, activate data
     #     augmentation if desired
-    #             dataset = dataset.map(Utils.random_amplify, num_parallel_calls=model_config["num_workers"]).
-    #             prefetch(100)
+    #     dataset = dataset.map(Utils.random_amplify, num_parallel_calls=model_config["num_workers"]).
+    #     prefetch(100)
 
     # Cut outputs to centre part
     dataset = dataset.map(lambda x: Utils.crop_sample(x, (input_shape[1] - output_shape[1]) // 2)).prefetch(100)
@@ -243,91 +253,11 @@ def get_dataset(model_config, input_shape, output_shape, partition):
     return dataset
 
 
-def get_dataset_pickle(model_config):
-    if model_config["task"] == "dry":
-        try:
-            with open('data/dataDryDict.pkl', "rb") as fp:
-                dataset = pickle.load(fp)
-        except Exception as e:
-            outsize = 0
-            with open('data/dataDryDict.pkl', 'rb') as infile:
-                content = infile.read()
-            with open('data/dataDryDict_new.pkl', 'wb') as output:
-                for line in content.splitlines():
-                    outsize += len(line) + 1
-                    output.write(line + str.encode('\n'))
-            with open('data/dataDryDict_new.pkl', "rb") as fp:
-                dataset = pickle.load(fp)
+def get_dataset_pickle():
 
-    elif model_config["task"] == "wet":
-
-        with open('data/dataWetDict.pkl', "rb") as fp:
-            dataset = pickle.load(fp)
-
-    for partition in ["train", "val", "test"]:
-        for idx in range(len(dataset[partition])):
-            for key in dataset[partition][idx].keys():
-                if dataset[partition][idx][key] is not None:
-                    dataset[partition][idx][key] = os.path.join(model_config['enst_path'],
-                                                                dataset[partition][idx][key][1:])
-
-    dataset_1 = {"train": [
-                         {
-                         "mix": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\mixture.wav",
-                         "bass": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\bass.wav",
-                         "drums": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\drums.wav",
-                         "other": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\other.wav",
-                         "vocals": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\vocals.wav"
-                     },
-
-                             {
-                                 "mix": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\mixture.wav",
-                                 "bass": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\bass.wav",
-                                 "drums": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\drums.wav",
-                                 "other": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\other.wav",
-                                 "vocals": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\vocals.wav"
-                             }
-
-
-                     ],
-        "test": [
-            {
-                "mix": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\mixture.wav",
-                "bass": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\bass.wav",
-                "drums": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\drums.wav",
-                "other": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\other.wav",
-                "vocals": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\vocals.wav"
-            },
-
-            {
-                "mix": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\mixture.wav",
-                "bass": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\bass.wav",
-                "drums": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\drums.wav",
-                "other": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\other.wav",
-                "vocals": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\vocals.wav"
-            }
-
-        ],
-        "val": [
-            {
-                "mix": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\mixture.wav",
-                "bass": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\bass.wav",
-                "drums": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\drums.wav",
-                "other": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\other.wav",
-                "vocals": "E:\\phd\\musdb18hq\\test\\Cristina Vane - So Easy\\vocals.wav"
-            },
-
-            {
-                "mix": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\mixture.wav",
-                "bass": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\bass.wav",
-                "drums": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\drums.wav",
-                "other": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\other.wav",
-                "vocals": "E:\\phd\\musdb18hq\\test\\Carlos Gonzalez - A Place For Us\\vocals.wav"
-            }
-
-        ]
-
-                 }
+    with open("E:\\phd\\dataset.txt") as data_file:
+        data_1 = data_file.read()
+        dataset_1 = json.loads(data_1)
 
     return dataset_1
 

@@ -41,7 +41,7 @@ def main(cfg, model_path, output_path):
 
     model_config = cfg["model_config"]
     
-    dataset = Datasets.get_dataset_pickle(model_config)
+    dataset = Datasets.get_dataset_pickle()
     
     L1 = []
     L2 = []
@@ -69,6 +69,3 @@ def main(cfg, model_path, output_path):
     
     print('L1: %.8f' % np.mean(np.asarray(L1)))
     print('L2: %.8f' % np.mean(np.asarray(L2)))
-        
-        
-        

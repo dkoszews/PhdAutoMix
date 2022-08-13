@@ -1,0 +1,39 @@
+1A - Angels izotope
+1B - Angels pro
+1C - Angels amateur
+1D - Angels unet
+
+2A - Ben pro
+2B - Ben izotope
+2C - Ben unet
+2D - Ben amateur
+
+3A - Georgia unet
+3B - Georgia izotope
+3C - Georgia pro
+3D - Georgia amateur
+
+4A - Secretariat izotope
+4B - Secretariat unet
+4C - Secretariat amateur
+4D - Secretariat pro
+
+5A - Side amateur
+5B - Side izotope
+5C - Side unet
+5D - Side pro
+
+6A - Speak pro
+6B - Speak unet
+6C - Speak izotope
+6D - Speak amateur
+
+7A - The unet
+7B - The amateur
+7C - The pro
+7D - The izotope
+
+8A - Tom unet
+8B - Tom amateur
+8C - Tom izotope
+8D - Tom pro

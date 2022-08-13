@@ -7,6 +7,7 @@ import os
 import Models.MixWaveUNet
 import Utils
 
+
 def predict(audio, model_config, load_model):
     # Determine input and output shapes, if we use U-net as separator
     disc_input_shape = [model_config["batch_size"], model_config["num_frames"], 0]  # Shape of discriminator input
@@ -28,7 +29,7 @@ def predict(audio, model_config, load_model):
 
     # BUILD MODELS
     # Separator
-    frame_pred = model_func(tracks_ph, training=False, reuse=False)
+    frame_pred = model_func(tracks_ph, training=False, reuse=False, print_initial_summary=True)
 
     # Start session and queue input threads
     sess = tf.compat.v1.Session()
@@ -36,8 +37,8 @@ def predict(audio, model_config, load_model):
 
     # Load model
     # Load pretrained model to continue training, if we are supposed to
-    restorer = tf.compat.v1.run_single_epoch.Saver(None, write_version=tf.compat.v1.run_single_epoch.SaverDef.V2)
-    print("Num of variables" + str(len(tf.compat.v1.global_variables())))
+    restorer = tf.compat.v1.train.Saver(None, write_version=tf.compat.v1.train.SaverDef.V2)
+    print("Num of variables: " + str(len(tf.compat.v1.global_variables())))
     restorer.restore(sess, load_model)
     print('Pre-trained model restored for song prediction')
 
@@ -82,12 +83,13 @@ def predict_track(model_config, sess, audio, input_shape, output_shape, frame_pr
     pad_time_frames = (input_time_frames - output_time_frames) // 2
     
 
-    for key in audio.keys():     
-        audio[key] = np.pad(audio[key], [(pad_time_frames, pad_time_frames), (0,0)], mode="constant", constant_values=0.0)
+    for key in audio.keys():
+        audio[key] = np.pad(audio[key], [(pad_time_frames, pad_time_frames), (0, 0)], mode="constant", constant_values=0.0)
 
     # Iterate over mixture magnitudes, fetch network rpediction
     for mix_pos in range(0, mix_time_frames, output_time_frames):
-        # If this output patch would reach over the end of the source spectrogram, set it so we predict the very end of the output, then stop
+        # If this output patch would reach over the end of the source spectrogram, set it so we predict the very end of
+        # the output, then stop
         if mix_pos + output_time_frames > mix_time_frames:
             mix_pos = mix_time_frames - output_time_frames
         
@@ -108,7 +110,7 @@ def predict_track(model_config, sess, audio, input_shape, output_shape, frame_pr
 
     # In case we had to pad the mixture at the end, remove those samples from source prediction now
     if extra_pad > 0:
-        mix_preds = mix_preds[:-extra_pad,:] 
+        mix_preds = mix_preds[:-extra_pad, :]
 
     return mix_preds
 
@@ -130,10 +132,10 @@ def produce_outputs(model_config, load_model, tracksdict, output_path):
     for key, value in tracksdict.items():
         
         if value is not None:
-            if key != 'mix':      
+            if key != 'mix' or key != 'mix_1':
                 
                 audioTrack, sr = Utils.load(value, sr=model_config["expected_sr"], mono=model_config["mono_downmix"])
-                assert (audioTrack.shape[1] is 1)
+                assert (audioTrack.shape[1] <= 2)
                 assert (sr is model_config['expected_sr'])
                 audio[key] = audioTrack
                 lengths.append(audioTrack.shape[0])
@@ -143,8 +145,8 @@ def produce_outputs(model_config, load_model, tracksdict, output_path):
     for key, value in tracksdict.items():
         
         if value is None:
-            if key != 'mix': 
-                audio[key] = np.zeros((length[0],1), dtype=np.float32)     
+            if key != 'mix' or key != 'mix_1':
+                audio[key] = np.zeros((length[0],1), dtype=np.float32)
                
 
     mix_pred = predict(audio, model_config, load_model)

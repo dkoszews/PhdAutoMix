@@ -7,17 +7,17 @@ config_ingredient = Ingredient("cfg")
 def cfg():
     # Base configuration
     model_config = {"enst_path": "/mnt/windaten/Datasets/ENST_Drums",  # SET ENST PATH HERE
-                    "estimates_path": "/mnt/windaten/Source_Estimates",
+                    "estimates_path": "E:\\phd\\PhdAutoMix\\Mix-Wave-U-Net-master\\Source_Estimates",
                     # SET THIS PATH TO WHERE YOU WANT OUTPUTS PRODUCED BY THE TRAINED MODEL TO BE SAVED. Folder
                     # itself must exist!
-                    "output_folder": "C:\\Users\\RinoReyns\\Desktop\\Projekty\\PhdAutoMix\\Experiments",
+                    "output_folder": "E:\\phd\\Experiments",
                     # Set this to where the preprocessed dataset should be saved
 
                     "model_base_dir": "checkpoints",  # Base folder for model checkpoints
                     "log_dir": "logs",  # Base folder for logs files
-                    "batch_size": 1,  # Batch size
+                    "batch_size": 16,  # Batch size
                     "lr": 1e-4,  # Learning rate
-                    "epoch_it": 2,  # Number of update steps per epoch
+                    "epoch_it": 200,  # Number of update steps per epoch
                     'cache_size': 1000,
                     # Number of audio snippets buffered in the random shuffle queue. Larger is better, since workers
                     # put multiple examples of one song into this queue. The number of different songs that is
@@ -40,7 +40,7 @@ def cfg():
                     # DESIRED number of time frames in the output waveform per samples (could be changed when using
                     # valid padding)
                     'expected_sr': 44100,  # Downsample all audio input to this sampling rate
-                    'mono_downmix': True,  # Whether to downsample the audio input
+                    'mono_downmix': False,  # Whether to downsample the audio input
                     'output_type': 'direct',  # Type of output layer. Direct output: Linear layer without activation
                     'output_activation': 'linear',
                     # Activation function for output layer. "tanh" or "linear". Linear output involves clipping to [
@@ -59,12 +59,13 @@ def cfg():
                     # 'multi_instrument': Separate music into guitar, bass, vocals, drums and other (Sisec)
                     'augmentation': False,
                     # Random attenuation of input signals to improve generalisation performance (data augmentation)
-                    'worse_epochs': 20,  # Patience for early stoppping on validation set
+                    'worse_epochs': 10,  # Patience for early stopping on validation set
                     }
     experiment_id = np.random.randint(0, 1000000)
 
     model_config["input_names"] = ['mix', 'bass', 'drums', 'other', 'vocals']
-    model_config["num_inputs"] = len(model_config["input_names"])
+    model_config["input_names_2"] = ['bass', "bass_1", 'drums', 'drums_1', 'other', 'other_1', 'vocals', 'vocals_1']
+    model_config["num_inputs"] = len(model_config["input_names"]) if model_config["mono_downmix"] else len(model_config["input_names"]) * 2
     model_config["num_outputs"] = 1 if model_config["mono_downmix"] else 2
     return model_config
 

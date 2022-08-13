@@ -82,7 +82,7 @@ def run_single_epoch(model_config, experiment_id, load_model=None, print_initial
     # CHECKPOINTING
     # Load pretrained model to continue training, if we are supposed to
     if load_model != None:
-        restorer = tf.train.Saver(tf.compat.v1.global_variables(),
+        restorer = tf.compat.v1.train.Saver(tf.compat.v1.global_variables(),
                                   write_version=tf.compat.v1.train.SaverDef.V2)
         print("Num of variables" + str(len(tf.compat.v1.global_variables())))
         restorer.restore(sess, load_model)
@@ -131,7 +131,7 @@ def run_training(model_config, experiment_id):
         worse_epochs = 0
         if i == 1:
             print("Finished first round of training, now entering fine-tuning stage")
-            #             model_config["batch_size"] *= 2
+            #model_config["batch_size"] *= 2
             model_config["lr"] = 1e-5
         while worse_epochs < model_config["worse_epochs"]:  # Early stopping on validation set after a few epochs
             print("EPOCH: " + str(epoch))
@@ -165,7 +165,7 @@ def run(model_config):
             os.makedirs(dir)
 
     # Optimize in a supervised fashion until validation loss worsens
-    sup_model_path, sup_loss = run_training(model_config, "test_1")
+    sup_model_path, sup_loss = run_training(model_config, "stem_to_mix_model")
     print("Supervised training finished! Saved model at " + sup_model_path + ". Performance: " + str(sup_loss))
 
 
